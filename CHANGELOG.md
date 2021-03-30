@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 
+## [UnReleased] - 2021-MM-DD
+
+### Added
+
+### Changed
+
+- Rename `pytorch_lightning.loggers.neptune.NeptuneLogger` to `pytorch_lightning.loggers.neptune_legacy.NeptuneLegacyLogger`. (TODO PR link)
+
+
+### Deprecated
+
+
 ## [1.3.0] - 2021-MM-DD
 
 ### Added
@@ -236,7 +248,6 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 
 - Deprecated `Callback.on_load_checkpoint(checkpoint)` in favor of `Callback.on_load_checkpoint(trainer, pl_module, checkpoint)` ([#7253](https://github.com/PyTorchLightning/pytorch-lightning/pull/7253))
-
 
 - Deprecated metrics in favor of `torchmetrics` ([#6505](https://github.com/PyTorchLightning/pytorch-lightning/pull/6505),
     [#6530](https://github.com/PyTorchLightning/pytorch-lightning/pull/6530),
