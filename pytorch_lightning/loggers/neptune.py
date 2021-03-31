@@ -62,9 +62,8 @@ class NeptuneLogger(LightningLoggerBase):
         # We are using an api_key for the anonymous user "neptuner" but you can use your own.
         neptune_logger = NeptuneLogger(
             api_key='ANONYMOUS',
-            project_name='shared/pytorch-lightning-integration',
-            experiment_name='default',  # Optional,
-            params={'max_epochs': 10},  # Optional,
+            project='shared/pytorch-lightning-integration',
+            name='default',  # Optional,
             tags=['pytorch-lightning', 'mlp']  # Optional,
         )
         trainer = Trainer(max_epochs=10, logger=neptune_logger)
@@ -78,9 +77,8 @@ class NeptuneLogger(LightningLoggerBase):
         # arguments made to NeptuneLogger are passed on to the neptune.experiments.Experiment class
         neptune_logger = NeptuneLogger(
             offline_mode=True,
-            project_name='USER_NAME/PROJECT_NAME',
-            experiment_name='default',  # Optional,
-            params={'max_epochs': 10},  # Optional,
+            project='USER_NAME/PROJECT_NAME',
+            name='default',  # Optional,
             tags=['pytorch-lightning', 'mlp']  # Optional,
         )
         trainer = Trainer(max_epochs=10, logger=neptune_logger)
@@ -92,18 +90,23 @@ class NeptuneLogger(LightningLoggerBase):
         class LitModel(LightningModule):
             def training_step(self, batch, batch_idx):
                 # log metrics
-                self.logger.experiment.log_metric('acc_train', ...)
+                self.logger.experiment['acc_train'].log(...)
                 # log images
-                self.logger.experiment.log_image('worse_predictions', ...)
+                # TODO
+                self.logger.experiment['worse_predictions'].log(...)
                 # log model checkpoint
-                self.logger.experiment.log_artifact('model_checkpoint.pt', ...)
-                self.logger.experiment.whatever_neptune_supports(...)
+                # TODO
+                self.logger.experiment['model_checkpoint.pt'].log(...)
 
             def any_lightning_module_function_or_hook(self):
-                self.logger.experiment.log_metric('acc_train', ...)
-                self.logger.experiment.log_image('worse_predictions', ...)
-                self.logger.experiment.log_artifact('model_checkpoint.pt', ...)
-                self.logger.experiment.whatever_neptune_supports(...)
+                # log metrics
+                self.logger.experiment['acc_train'].log(...)
+                # log images
+                # TODO
+                self.logger.experiment['worse_predictions'].log(...)
+                # log model checkpoint
+                # TODO
+                self.logger.experiment['model_checkpoint.pt'].log(...)
 
     If you want to log objects after the training is finished use ``close_after_fit=False``:
 
@@ -124,7 +127,7 @@ class NeptuneLogger(LightningLoggerBase):
         from sklearn.metrics import accuracy_score
 
         accuracy = accuracy_score(y_true, y_pred)
-        neptune_logger.experiment.log_metric('test_accuracy', accuracy)
+        neptune_logger.experiment['test_accuracy'] = accuracy
 
         # Log charts
         from scikitplot.metrics import plot_confusion_matrix
@@ -132,19 +135,13 @@ class NeptuneLogger(LightningLoggerBase):
 
         fig, ax = plt.subplots(figsize=(16, 12))
         plot_confusion_matrix(y_true, y_pred, ax=ax)
-        neptune_logger.experiment.log_image('confusion_matrix', fig)
-
-        # Save checkpoints folder
-        neptune_logger.experiment.log_artifact('my/checkpoints')
+        neptune_logger.experiment['confusion_matrix'].log(fig)
 
         # When you are done, stop the experiment
         neptune_logger.experiment.stop()
 
     See Also:
-        - An `Example experiment <https://ui.neptune.ai/o/shared/org/
-          pytorch-lightning-integration/e/PYTOR-66/charts>`_ showing the UI of Neptune.
-        - `Tutorial <https://docs.neptune.ai/integrations/pytorch_lightning.html>`_ on how to use
-          Pytorch Lightning with Neptune.
+        TODO
 
     Args:
         api_key: Required in online mode.
@@ -153,7 +150,7 @@ class NeptuneLogger(LightningLoggerBase):
             `API key <https://docs.neptune.ai/python-api/tutorials/get-started.html#copy-api-token>`_.
             It is recommended to keep it in the `NEPTUNE_API_TOKEN`
             environment variable and then you can leave ``api_key=None``.
-        project_name: Required in online mode. Qualified name of a project in a form of
+        project: Required in online mode. Qualified name of a project in a form of
             "namespace/project_name" for example "tom/minst-classification".
             If ``None``, the value of `NEPTUNE_PROJECT` environment variable will be taken.
             You need to create the project in https://neptune.ai first.
@@ -163,33 +160,34 @@ class NeptuneLogger(LightningLoggerBase):
             will not be closed after training and additional metrics,
             images or artifacts can be logged. Also, remember to close the experiment explicitly
             by running ``neptune_logger.experiment.stop()``.
-        experiment_name: Optional. Editable name of the experiment.
+        name: Optional. Editable name of the experiment.
             Name is displayed in the experiment’s Details (Metadata section) and
             in experiments view as a column.
-        experiment_id: Optional. Default is ``None``. The ID of the existing experiment.
-            If specified, connect to experiment with experiment_id in project_name.
-            Input arguments "experiment_name", "params", "properties" and "tags" will be overriden based
-            on fetched experiment data.
+        run: Optional. Default is ``None``. The ID of the existing run.
+            If specified (e.g. 'ABC-42'), connect to experiment with `sys/id` in project_name.
+            Input arguments "name" and "tags" will be overridden based on fetched experiment data.
         prefix: A string to put at the beginning of metric keys.
-        \**kwargs: Additional arguments like `params`, `tags`, `properties`, etc. used by
-            :func:`neptune.Session.create_experiment` can be passed as keyword arguments in this logger.
+        \**kwargs: Additional arguments like `tags`, `capture_stdout`, `capture_stderr` etc. used by
+            :func:`neptune.new.init_impl.init` can be passed as keyword arguments in this logger.
 
     Raises:
         ImportError:
-            If required Neptune package is not installed on the device.
+            If required Neptune package in version >=0.9 is not installed on the device.
+        TypeError:
+            If configured project has not been migrated to new structure yet.
     """
 
     LOGGER_JOIN_CHAR = '-'
 
     def __init__(
             self,
-            project: Optional[str] = None,
             api_key: Optional[str] = None,
-            run: Optional[str] = None,
-            mode: str = ASYNC,
-            prefix: str = '',
-            close_after_fit: Optional[bool] = True,
+            project: Optional[str] = None,
             offline_mode: bool = False,
+            close_after_fit: Optional[bool] = True,
+            name: Optional[str] = None,
+            run: Optional[str] = None,
+            prefix: str = '',
             **neptune_run_kwargs):
         if neptune_alpha is None:
             raise ImportError(
@@ -199,13 +197,12 @@ class NeptuneLogger(LightningLoggerBase):
         super().__init__()
         self._project = project
         self._api_key = api_key
-        self._run_to_load = run  # particular id of exp to load e.g. 'ABC-42'
-        self._mode = mode
         self._neptune_run_kwargs = neptune_run_kwargs
-
-        self._prefix = prefix
         self._close_after_fit = close_after_fit
-        self._run_mode = OFFLINE if offline_mode else ASYNC
+        self._mode = OFFLINE if offline_mode else ASYNC
+        self._name = name
+        self._run_to_load = run  # particular id of exp to load e.g. 'ABC-42'
+        self._prefix = prefix
 
         self._run_instance = None
 
@@ -218,7 +215,7 @@ class NeptuneLogger(LightningLoggerBase):
 
     @property
     def offline_mode(self):
-        return self._run_mode == OFFLINE
+        return self._mode == OFFLINE
 
     @property
     @rank_zero_experiment
@@ -241,6 +238,7 @@ class NeptuneLogger(LightningLoggerBase):
                     project=self._project,
                     api_token=self._api_key,
                     run=self._run_to_load,
+                    name=self._name,
                     mode=self._mode,
                     **self._neptune_run_kwargs,
                 )
