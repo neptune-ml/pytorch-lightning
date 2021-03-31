@@ -25,7 +25,7 @@ from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.loggers import (
     CometLogger,
     MLFlowLogger,
-    NeptuneLogger,
+    NeptuneLegacyLogger,
     TensorBoardLogger,
     TestTubeLogger,
     WandbLogger,
@@ -70,8 +70,8 @@ def test_loggers_fit_test_all(tmpdir, monkeypatch):
          mock.patch('pytorch_lightning.loggers.mlflow.MlflowClient'):
         _test_loggers_fit_test(tmpdir, MLFlowLogger)
 
-    with mock.patch('pytorch_lightning.loggers.neptune.neptune'):
-        _test_loggers_fit_test(tmpdir, NeptuneLogger)
+    with mock.patch('pytorch_lightning.loggers.neptune_legacy.neptune'):
+        _test_loggers_fit_test(tmpdir, NeptuneLegacyLogger)
 
     with mock.patch('pytorch_lightning.loggers.test_tube.Experiment'):
         _test_loggers_fit_test(tmpdir, TestTubeLogger)
@@ -235,7 +235,7 @@ def _test_loggers_save_dir_and_weights_save_path(tmpdir, logger_class):
     [
         CometLogger,
         MLFlowLogger,
-        NeptuneLogger,
+        NeptuneLegacyLogger,
         TensorBoardLogger,
         TestTubeLogger,
         # The WandbLogger gets tested for pickling in its own test.
@@ -327,7 +327,7 @@ class RankZeroLoggerCheck(Callback):
     "logger_class", [
         CometLogger,
         MLFlowLogger,
-        NeptuneLogger,
+        NeptuneLegacyLogger,
         TensorBoardLogger,
         TestTubeLogger,
     ]
@@ -381,8 +381,8 @@ def test_logger_with_prefix_all(tmpdir, monkeypatch):
         logger.experiment.log_metric.assert_called_once_with(ANY, "tmp-test", 1.0, ANY, 0)
 
     # Neptune
-    with mock.patch('pytorch_lightning.loggers.neptune.neptune'):
-        logger = _instantiate_logger(NeptuneLogger, save_idr=tmpdir, prefix=prefix)
+    with mock.patch('pytorch_lightning.loggers.neptune_legacy.neptune'):
+        logger = _instantiate_logger(NeptuneLegacyLogger, save_idr=tmpdir, prefix=prefix)
         logger.log_metrics({"test": 1.0}, step=0)
         logger.experiment.log_metric.assert_called_once_with("tmp-test", 1.0)
 
