@@ -31,6 +31,7 @@ if _NEPTUNE_AVAILABLE:
     from neptune import new as neptune_alpha
     from neptune.new.run import Run
     from neptune.new.internal.init_impl import ASYNC, OFFLINE
+    from neptune.new.exceptions import NeptuneLegacyProjectException
 else:
     # needed for test mocks, these tests shall be updated
     neptune_alpha, Run, ASYNC, OFFLINE = None, None, None, None
@@ -186,6 +187,7 @@ class NeptuneLogger(LightningLoggerBase):
             api_key: Optional[str] = None,
             run: Optional[str] = None,
             mode: str = ASYNC,
+            prefix: str = '',
             close_after_fit: Optional[bool] = True,
             offline_mode: bool = False,
             **neptune_run_kwargs):
@@ -201,6 +203,7 @@ class NeptuneLogger(LightningLoggerBase):
         self._mode = mode
         self._neptune_run_kwargs = neptune_run_kwargs
 
+        self._prefix = prefix
         self._close_after_fit = close_after_fit
         self._run_mode = OFFLINE if offline_mode else ASYNC
 
@@ -233,13 +236,19 @@ class NeptuneLogger(LightningLoggerBase):
         # Note that even though we initialize self._experiment in __init__,
         # it may still end up being None after being pickled and un-pickled
         if self._run_instance is None:
-            self._run_instance = neptune_alpha.init(
-                project=self._project,
-                api_token=self._api_key,
-                run=self._run_to_load,
-                mode=self._mode,
-                **self._neptune_run_kwargs,
-            )
+            try:
+                self._run_instance = neptune_alpha.init(
+                    project=self._project,
+                    api_token=self._api_key,
+                    run=self._run_to_load,
+                    mode=self._mode,
+                    **self._neptune_run_kwargs,
+                )
+            except NeptuneLegacyProjectException as e:
+                raise TypeError(f"""
+                    Project {self._project} has not been imported to new structure yet.
+                    You can still integrate it with `NeptuneLegacyLogger`.
+                    """) from e
 
         return self._run_instance
 
@@ -287,7 +296,7 @@ class NeptuneLogger(LightningLoggerBase):
         if self.offline_mode:
             return 'offline-name'
         else:
-            return self.run.name  # TODO
+            return self.run['sys/id'].fetch()  # TODO: or maybe 'sys/name'?
 
     @property
     def version(self) -> str:
