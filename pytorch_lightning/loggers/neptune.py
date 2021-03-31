@@ -33,8 +33,8 @@ if _NEPTUNE_AVAILABLE:
     from neptune.new.internal.init_impl import ASYNC, OFFLINE
     from neptune.new.exceptions import NeptuneLegacyProjectException
 else:
-    # needed for test mocks, these tests shall be updated
-    neptune_alpha, Run, ASYNC, OFFLINE = None, None, None, None
+    # needed for test mocks, and function signatures
+    neptune_alpha, Run = None, None
 
 
 class NeptuneLogger(LightningLoggerBase):
@@ -293,7 +293,7 @@ class NeptuneLogger(LightningLoggerBase):
             return 'offline-name'
         else:
             self.run.sync()
-            return self.run['sys/id'].fetch()
+            return self.run['sys/name'].fetch()
 
     @property
     def version(self) -> str:

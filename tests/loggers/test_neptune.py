@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from unittest.mock import MagicMock, patch
-from unittest import skip
 
 import torch
 
@@ -33,21 +32,8 @@ def test_neptune_online(neptune_alpha):
     assert logger._run_instance is None
     _ = logger.experiment
     assert logger._run_instance == created_run
-    assert logger.name == created_run.name
-    assert logger.version == str(created_run._uuid)
-
-
-@skip(reason='Not implemented yet')
-@patch('pytorch_lightning.loggers.neptune.neptune_alpha')
-def test_neptune_existing_experiment(neptune_alpha):
-    logger = NeptuneLogger(run='TEST-123')
-    # neptune.Session.with_default_backend().get_project().get_experiments.assert_not_called()
-    run = logger.experiment
-    # neptune.Session.with_default_backend().get_project().get_experiments.assert_called_once_with(id='TEST-123')
-    assert logger.experiment_name == run.get_system_properties()['name']
-    assert logger.params == run.get_parameters()
-    assert logger.properties == run.get_properties()
-    assert logger.tags == run.get_tags()
+    assert logger.name == created_run['sys/name'].fetch()
+    assert logger.version == created_run['sys/id'].fetch()
 
 
 @patch('pytorch_lightning.loggers.neptune.neptune_alpha')
@@ -61,6 +47,7 @@ def test_neptune_additional_methods(neptune_alpha):
     run_mock.__getitem__.assert_called_once_with('key1')
     run_mock.__getitem__().log.assert_called_once_with(torch.ones(1))
     run_mock.reset_mock()
+
 
 @patch('pytorch_lightning.loggers.neptune.neptune_alpha')
 def test_neptune_leave_open_experiment_after_fit(neptune_alpha, tmpdir):
