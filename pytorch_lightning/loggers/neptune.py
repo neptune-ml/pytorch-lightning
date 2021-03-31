@@ -20,7 +20,6 @@ from argparse import Namespace
 from typing import Any, Dict, Optional, Union
 
 import torch
-from neptune.new.internal.init_impl import ASYNC, OFFLINE
 
 from pytorch_lightning.loggers.base import LightningLoggerBase, rank_zero_experiment
 from pytorch_lightning.utilities import _module_available, rank_zero_only
@@ -31,9 +30,10 @@ _NEPTUNE_AVAILABLE = _module_available("neptune.new")
 if _NEPTUNE_AVAILABLE:
     from neptune import new as neptune_alpha
     from neptune.new.run import Run
+    from neptune.new.internal.init_impl import ASYNC, OFFLINE
 else:
     # needed for test mocks, these tests shall be updated
-    neptune_alpha, Run = None, None
+    neptune_alpha, Run, ASYNC, OFFLINE = None, None, None, None
 
 
 class NeptuneLogger(LightningLoggerBase):
@@ -191,8 +191,8 @@ class NeptuneLogger(LightningLoggerBase):
             **neptune_run_kwargs):
         if neptune_alpha is None:
             raise ImportError(
-                'You want to use `neptune` logger which is not installed yet,'
-                ' install it with `pip install neptune-client`.'
+                'You want to use `neptune` in version >=0.9 logger which is not installed yet,'
+                ' install it with `pip install "neptune-client>=0.9"`.'
             )
         super().__init__()
         self._project = project
