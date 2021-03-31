@@ -17,12 +17,10 @@ Neptune Logger
 """
 import logging
 from argparse import Namespace
-from typing import Any, Dict, Iterable, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import torch
-from neptune.new.attributes.constants import ARTIFACT_ATTRIBUTE_SPACE, LOG_ATTRIBUTE_SPACE, PROPERTIES_ATTRIBUTE_SPACE, \
-    SYSTEM_TAGS_ATTRIBUTE_PATH
-from torch import is_tensor
+from neptune.new.internal.init_impl import ASYNC, OFFLINE
 
 from pytorch_lightning.loggers.base import LightningLoggerBase, rank_zero_experiment
 from pytorch_lightning.utilities import _module_available, rank_zero_only
@@ -184,42 +182,40 @@ class NeptuneLogger(LightningLoggerBase):
 
     def __init__(
             self,
-            api_key: Optional[str] = None,
             project: Optional[str] = None,
-            name: Optional[str] = None,
+            api_key: Optional[str] = None,
+            run: Optional[str] = None,
+            mode: str = ASYNC,
             close_after_fit: Optional[bool] = True,
             offline_mode: bool = False,
-            experiment_name: Optional[str] = None,
-            run_id: Optional[str] = None,
-            **kwargs
-    ):
+            **neptune_run_kwargs):
         if neptune_alpha is None:
             raise ImportError(
                 'You want to use `neptune` logger which is not installed yet,'
                 ' install it with `pip install neptune-client`.'
             )
         super().__init__()
-        self.api_key = api_key
-        self.project = project
-        self.name_ = name  # TODO: property conflict
-        self.offline_mode = offline_mode
-        self.close_after_fit = close_after_fit
-        self.run_name = experiment_name
-        self._kwargs = kwargs
-        self.run_id = run_id
-        self._run = None
+        self._project = project
+        self._api_key = api_key
+        self._run_to_load = run  # particular id of exp to load e.g. 'ABC-42'
+        self._mode = mode
+        self._neptune_run_kwargs = neptune_run_kwargs
+
+        self._close_after_fit = close_after_fit
+        self._run_mode = OFFLINE if offline_mode else ASYNC
+
+        self._run_instance = None
 
         log.info(f'NeptuneLogger will work in {"offline" if self.offline_mode else "online"} mode')
 
     def __getstate__(self):
+        # TODO: what is this function about
         state = self.__dict__.copy()
-
-        # Experiment cannot be pickled, and additionally its ID cannot be pickled in offline mode
-        state['_experiment'] = None
-        if self.offline_mode:
-            state['experiment_id'] = None
-
         return state
+
+    @property
+    def offline_mode(self):
+        return self._run_mode == OFFLINE
 
     @property
     @rank_zero_experiment
@@ -236,10 +232,16 @@ class NeptuneLogger(LightningLoggerBase):
 
         # Note that even though we initialize self._experiment in __init__,
         # it may still end up being None after being pickled and un-pickled
-        if self._run is None:
-            self._run = self._create_or_get_run()
+        if self._run_instance is None:
+            self._run_instance = neptune_alpha.init(
+                project=self._project,
+                api_token=self._api_key,
+                run=self._run_to_load,
+                mode=self._mode,
+                **self._neptune_run_kwargs,
+            )
 
-        return self._run
+        return self._run_instance
 
     @property
     def run(self) -> Run:
@@ -267,12 +269,12 @@ class NeptuneLogger(LightningLoggerBase):
         for key, val in metrics.items():
             # `step` is ignored because Neptune expects strictly increasing step values which
             # Lighting does not always guarantee.
-            self.log_metric(key, val)
+            self.experiment[key].log(val)
 
     @rank_zero_only
     def finalize(self, status: str) -> None:
         super().finalize(status)
-        if self.close_after_fit:
+        if self._close_after_fit:
             self.run.stop()
 
     @property
@@ -285,29 +287,11 @@ class NeptuneLogger(LightningLoggerBase):
         if self.offline_mode:
             return 'offline-name'
         else:
-            return self.run.name
+            return self.run.name  # TODO
 
     @property
     def version(self) -> str:
         if self.offline_mode:
             return 'offline-id-1234'
         else:
-            return self.run.id
-
-    def _create_or_get_run(self):
-        if self.run_id is None:
-            run = neptune_alpha.init(
-                project=self.project,
-                api_token=self.api_key,
-                run=self.name_,
-            )
-            # self.run_id = run.id
-        else:
-            return None
-            # run = project.get_experiments(id=self.run_id)[0]
-            # self.run_name = exp.get_system_properties()['name']
-            # self.params = exp.get_parameters()
-            # self.properties = exp.get_properties()
-            # self.tags = exp.get_tags()
-
-        return run
+            return str(self.run._uuid)
