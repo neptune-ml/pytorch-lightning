@@ -209,8 +209,9 @@ class NeptuneLogger(LightningLoggerBase):
         log.info(f'NeptuneLogger will work in {"offline" if self.offline_mode else "online"} mode')
 
     def __getstate__(self):
-        # TODO: what is this function about
         state = self.__dict__.copy()
+        # Run instance can't be pickled
+        state['_run_instance'] = None
         return state
 
     @property
@@ -229,9 +230,6 @@ class NeptuneLogger(LightningLoggerBase):
             self.logger.experiment.some_neptune_function()
 
         """
-
-        # Note that even though we initialize self._experiment in __init__,
-        # it may still end up being None after being pickled and un-pickled
         if self._run_instance is None:
             try:
                 self._run_instance = neptune_alpha.init(
@@ -294,11 +292,12 @@ class NeptuneLogger(LightningLoggerBase):
         if self.offline_mode:
             return 'offline-name'
         else:
-            return self.run['sys/id'].fetch()  # TODO: or maybe 'sys/name'?
+            self.run.sync()
+            return self.run['sys/id'].fetch()
 
     @property
     def version(self) -> str:
         if self.offline_mode:
             return 'offline-id-1234'
         else:
-            return str(self.run._uuid)
+            return self.run['sys/id'].fetch()
