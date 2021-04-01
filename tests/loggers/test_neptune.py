@@ -20,11 +20,11 @@ from pytorch_lightning.loggers import NeptuneLogger
 from tests.helpers import BoringModel
 
 
-@patch('pytorch_lightning.loggers.neptune.neptune_alpha')
-def test_neptune_online(neptune_alpha):
+@patch('pytorch_lightning.loggers.neptune.neptune')
+def test_neptune_online(neptune):
     logger = NeptuneLogger(api_key='test', project_name='project')
 
-    created_run = neptune_alpha.init()
+    created_run = neptune.init()
 
     # It's important to check if the internal variable _experiment was initialized in __init__.
     # Calling logger.experiment would cause a side-effect of initializing _experiment,
@@ -36,12 +36,12 @@ def test_neptune_online(neptune_alpha):
     assert logger.version == created_run['sys/id'].fetch()
 
 
-@patch('pytorch_lightning.loggers.neptune.neptune_alpha')
-def test_neptune_additional_methods(neptune_alpha):
+@patch('pytorch_lightning.loggers.neptune.neptune')
+def test_neptune_additional_methods(neptune):
     logger = NeptuneLogger(api_key='test', project_name='project')
 
     run_mock = MagicMock()
-    neptune_alpha.init.return_value = run_mock
+    neptune.init.return_value = run_mock
 
     logger.experiment['key1'].log(torch.ones(1))
     run_mock.__getitem__.assert_called_once_with('key1')
@@ -49,8 +49,8 @@ def test_neptune_additional_methods(neptune_alpha):
     run_mock.reset_mock()
 
 
-@patch('pytorch_lightning.loggers.neptune.neptune_alpha')
-def test_neptune_leave_open_experiment_after_fit(neptune_alpha, tmpdir):
+@patch('pytorch_lightning.loggers.neptune.neptune')
+def test_neptune_leave_open_experiment_after_fit(neptune, tmpdir):
     """Verify that neptune experiment was closed after training"""
     model = BoringModel()
 

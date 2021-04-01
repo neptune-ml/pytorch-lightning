@@ -28,13 +28,13 @@ log = logging.getLogger(__name__)
 _NEPTUNE_AVAILABLE = _module_available("neptune.new")
 
 if _NEPTUNE_AVAILABLE:
-    from neptune import new as neptune_alpha
+    from neptune import new as neptune
     from neptune.new.run import Run
     from neptune.new.internal.init_impl import ASYNC, OFFLINE
     from neptune.new.exceptions import NeptuneLegacyProjectException
 else:
     # needed for test mocks, and function signatures
-    neptune_alpha, Run = None, None
+    neptune, Run = None, None
 
 
 class NeptuneLogger(LightningLoggerBase):
@@ -177,7 +177,7 @@ class NeptuneLogger(LightningLoggerBase):
             If configured project has not been migrated to new structure yet.
     """
 
-    LOGGER_JOIN_CHAR = '-'
+    LOGGER_JOIN_CHAR = '/'
 
     def __init__(
             self,
@@ -189,7 +189,7 @@ class NeptuneLogger(LightningLoggerBase):
             run: Optional[str] = None,
             prefix: str = '',
             **neptune_run_kwargs):
-        if neptune_alpha is None:
+        if neptune is None:
             raise ImportError(
                 'You want to use `neptune` in version >=0.9 logger which is not installed yet,'
                 ' install it with `pip install "neptune-client>=0.9"`.'
@@ -230,9 +230,13 @@ class NeptuneLogger(LightningLoggerBase):
             self.logger.experiment.some_neptune_function()
 
         """
+        return self.run
+
+    @property
+    def run(self) -> Run:
         if self._run_instance is None:
             try:
-                self._run_instance = neptune_alpha.init(
+                self._run_instance = neptune.init(
                     project=self._project,
                     api_token=self._api_key,
                     run=self._run_to_load,
@@ -247,10 +251,6 @@ class NeptuneLogger(LightningLoggerBase):
                     """) from e
 
         return self._run_instance
-
-    @property
-    def run(self) -> Run:
-        return self.experiment
 
     @rank_zero_only
     def log_hyperparams(self, params: Union[Dict[str, Any], Namespace]) -> None:
