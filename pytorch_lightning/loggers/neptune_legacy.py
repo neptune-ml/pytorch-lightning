@@ -29,8 +29,12 @@ log = logging.getLogger(__name__)
 _NEPTUNE_LEGACY_AVAILABLE = _module_available("neptune")
 
 if _NEPTUNE_LEGACY_AVAILABLE:
-    import neptune
-    from neptune.experiments import Experiment
+    try:
+        from neptune import legacy as neptune
+        from neptune.legacy.experiments import Experiment
+    except ImportError:
+        import neptune
+        from neptune.experiments import Experiment
 else:
     # needed for test mocks, these tests shall be updated
     neptune, Experiment = None, None

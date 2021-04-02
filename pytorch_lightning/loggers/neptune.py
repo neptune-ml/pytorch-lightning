@@ -25,12 +25,22 @@ from pytorch_lightning.loggers.base import LightningLoggerBase, rank_zero_experi
 from pytorch_lightning.utilities import _module_available, rank_zero_only
 
 log = logging.getLogger(__name__)
-_NEPTUNE_AVAILABLE = _module_available("neptune.new")
+
+if _module_available("neptune"):
+    from neptune import __version__
+    _NEPTUNE_AVAILABLE = __version__.startswith('0.9.') or __version__.startswith('1.')
+else:
+    _NEPTUNE_AVAILABLE = False
 
 if _NEPTUNE_AVAILABLE:
-    from neptune import new as neptune
-    from neptune.new.run import Run
-    from neptune.new.exceptions import NeptuneLegacyProjectException, NeptuneOfflineModeFetchException
+    try:
+        from neptune import new as neptune
+        from neptune.new.run import Run
+        from neptune.new.exceptions import NeptuneLegacyProjectException, NeptuneOfflineModeFetchException
+    except ImportError:
+        import neptune
+        from neptune.run import Run
+        from neptune.exceptions import NeptuneLegacyProjectException, NeptuneOfflineModeFetchException
 else:
     # needed for test mocks, and function signatures
     neptune, Run = None, None
