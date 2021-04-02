@@ -46,7 +46,6 @@ def test_neptune_additional_methods(neptune):
     logger.experiment['key1'].log(torch.ones(1))
     run_mock.__getitem__.assert_called_once_with('key1')
     run_mock.__getitem__().log.assert_called_once_with(torch.ones(1))
-    run_mock.reset_mock()
 
 
 @patch('pytorch_lightning.loggers.neptune.neptune')

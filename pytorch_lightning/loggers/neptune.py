@@ -30,8 +30,7 @@ _NEPTUNE_AVAILABLE = _module_available("neptune.new")
 if _NEPTUNE_AVAILABLE:
     from neptune import new as neptune
     from neptune.new.run import Run
-    from neptune.new.internal.init_impl import ASYNC, OFFLINE
-    from neptune.new.exceptions import NeptuneLegacyProjectException
+    from neptune.new.exceptions import NeptuneLegacyProjectException, NeptuneOfflineModeFetchException
 else:
     # needed for test mocks, and function signatures
     neptune, Run = None, None
@@ -183,7 +182,6 @@ class NeptuneLogger(LightningLoggerBase):
             self,
             api_key: Optional[str] = None,
             project: Optional[str] = None,
-            offline_mode: bool = False,
             close_after_fit: Optional[bool] = True,
             name: Optional[str] = None,
             run: Optional[str] = None,
@@ -199,24 +197,17 @@ class NeptuneLogger(LightningLoggerBase):
         self._api_key = api_key
         self._neptune_run_kwargs = neptune_run_kwargs
         self._close_after_fit = close_after_fit
-        self._mode = OFFLINE if offline_mode else ASYNC
         self._name = name
         self._run_to_load = run  # particular id of exp to load e.g. 'ABC-42'
         self._prefix = prefix
 
         self._run_instance = None
 
-        log.info(f'NeptuneLogger will work in {"offline" if self.offline_mode else "online"} mode')
-
     def __getstate__(self):
         state = self.__dict__.copy()
         # Run instance can't be pickled
         state['_run_instance'] = None
         return state
-
-    @property
-    def offline_mode(self):
-        return self._mode == OFFLINE
 
     @property
     @rank_zero_experiment
@@ -241,7 +232,6 @@ class NeptuneLogger(LightningLoggerBase):
                     api_token=self._api_key,
                     run=self._run_to_load,
                     name=self._name,
-                    mode=self._mode,
                     **self._neptune_run_kwargs,
                 )
             except NeptuneLegacyProjectException as e:
@@ -289,15 +279,16 @@ class NeptuneLogger(LightningLoggerBase):
 
     @property
     def name(self) -> str:
-        if self.offline_mode:
-            return 'offline-name'
-        else:
+        try:
             self.run.sync()
-            return self.run['sys/name'].fetch()
+        except NeptuneOfflineModeFetchException:
+            return 'offline-name'
+        return self.run['sys/name'].fetch()
 
     @property
     def version(self) -> str:
-        if self.offline_mode:
+        try:
+            self.run.sync()
+        except NeptuneOfflineModeFetchException:
             return 'offline-id-1234'
-        else:
-            return self.run['sys/id'].fetch()
+        return self.run['sys/id'].fetch()
