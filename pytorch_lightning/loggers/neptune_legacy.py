@@ -174,6 +174,10 @@ class NeptuneLegacyLogger(LightningLoggerBase):
             Input arguments "experiment_name", "params", "properties" and "tags" will be overriden based
             on fetched experiment data.
         prefix: A string to put at the beginning of metric keys.
+        proxies Optional. Default is ``None``.
+            Argument passed to HTTP calls made via the `Requests <https://2.python-requests.org/en/master/>`_ library.
+            For more information see their proxies
+            `section <https://2.python-requests.org/en/master/user/advanced/#proxies>`_.
         \**kwargs: Additional arguments like `params`, `tags`, `properties`, etc. used by
             :func:`neptune.Session.create_experiment` can be passed as keyword arguments in this logger.
 
@@ -193,6 +197,7 @@ class NeptuneLegacyLogger(LightningLoggerBase):
         experiment_name: Optional[str] = None,
         experiment_id: Optional[str] = None,
         prefix: str = '',
+        proxies: dict = None,
         **kwargs
     ):
         if neptune is None:
@@ -207,6 +212,7 @@ class NeptuneLegacyLogger(LightningLoggerBase):
         self.close_after_fit = close_after_fit
         self.experiment_name = experiment_name
         self._prefix = prefix
+        self._proxies = proxies
         self._kwargs = kwargs
         self.experiment_id = experiment_id
         self._experiment = None
@@ -381,7 +387,9 @@ class NeptuneLegacyLogger(LightningLoggerBase):
         if self.offline_mode:
             project = neptune.Session(backend=neptune.OfflineBackend()).get_project('dry-run/project')
         else:
-            session = neptune.Session.with_default_backend(api_token=self.api_key)
+            session = neptune.Session.with_default_backend(
+                api_token=self.api_key,
+                proxies=self._proxies)
             project = session.get_project(self.project_name)
 
         if self.experiment_id is None:
