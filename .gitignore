@@ -158,3 +158,6 @@ data
 MNIST
 runs
 *trace*
+
+# neptune local files
+.neptune/
