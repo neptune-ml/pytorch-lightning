@@ -355,7 +355,7 @@ The following are loggers we support
     CometLogger
     CSVLogger
     MLFlowLogger
-    NeptuneLegacyLogger
+    NeptuneLogger
     TensorBoardLogger
     TestTubeLogger
     WandbLogger

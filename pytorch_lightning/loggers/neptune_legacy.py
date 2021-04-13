@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 Neptune Legacy Logger
---------------
+---------------------
 """
 import logging
 from argparse import Namespace
@@ -43,6 +43,11 @@ else:
 class NeptuneLegacyLogger(LightningLoggerBase):
     r"""
     Log using `Neptune <https://neptune.ai>`_.
+
+    **WARNING**
+
+    This is Neptune legacy logger that make use of the legacy neptune-client's methods.
+    Check :class:`~pytorch_lightning.loggers.neptune.NeptuneLogger` to see how to work with new Neptune logger.
 
     Install it with pip:
 
