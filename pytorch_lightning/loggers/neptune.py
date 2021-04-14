@@ -73,25 +73,6 @@ class NeptuneLogger(LightningLoggerBase):
         )
         trainer = Trainer(max_epochs=10, logger=neptune_logger)
 
-    You can also pass `kwargs` to specify the run in the greater detail:
-
-    .. testcode::
-
-        from pytorch_lightning import Trainer
-        from pytorch_lightning.loggers import NeptuneLogger
-
-        neptune_logger = NeptuneLogger(
-            api_key='ANONYMOUS',
-            project='common/new-pytorch-lightning-integration',
-            name='lightning-run',  # Optional
-            **{'description': 'mlp quick run with pytorch-lightning',
-               'tags': ['mlp', 'quick run']}
-        )
-        trainer = Trainer(max_epochs=3, logger=neptune_logger)
-
-    Check `Neptune documentation <https://docs.neptune.ai/essentials/api-reference/run>`_
-    for more info about `run` parameters.
-
     Use the logger anywhere in your :class:`~pytorch_lightning.core.lightning.LightningModule` as follows:
 
     .. code-block:: python
@@ -111,14 +92,16 @@ class NeptuneLogger(LightningLoggerBase):
             def any_lightning_module_function_or_hook(self):
                 # log model checkpoint
                 ...
-                self.logger.experiment['model/checkpoints/epoch=37-val_acc=0.95'].upload('epoch=37-val_acc=0.95.ckpt')
+                self.logger.experiment['checkpoints/epoch37'].upload('epoch=37.ckpt')
 
                 # generic recipe
                 metadata = ...
                 self.logger.experiment['your/metadata/structure'].log(metadata)
 
-    Check `Neptune documentation <https://docs.neptune.ai/essentials/api-reference/run>`_
-    for more info about how to log metadata.
+    Check `Neptune docs <https://docs.neptune.ai/user-guides/logging-and-managing-runs-results/logging-runs-data>`_
+    for more info about how to log various types metadata (scores, files, images, interactive visuals, CSVs, etc.).
+
+    **Log after training is finished**
 
     If you want to log objects after the training is finished use ``close_after_fit=False``:
 
@@ -136,11 +119,32 @@ class NeptuneLogger(LightningLoggerBase):
         from neptune.new.types import File
         from scikitplot.metrics import plot_confusion_matrix
         import matplotlib.pyplot as plt
-
         ...
         fig, ax = plt.subplots(figsize=(16, 12))
         plot_confusion_matrix(y_true, y_pred, ax=ax)
         neptune_logger.experiment['test/confusion_matrix'].upload(File.as_image(fig))
+
+    **Pass additional parameters to Neptune run**
+
+    You can also pass `kwargs` to specify the run in the greater detail, like ``tags`` and ``description``:
+
+    .. testcode::
+
+        from pytorch_lightning import Trainer
+        from pytorch_lightning.loggers import NeptuneLogger
+
+        neptune_logger = NeptuneLogger(
+            project='common/new-pytorch-lightning-integration',
+            name='lightning-run',
+            description='mlp quick run with pytorch-lightning',
+            tags=['mlp', 'quick-run'],
+            )
+        trainer = Trainer(max_epochs=3, logger=neptune_logger)
+
+    Check `run documentation <https://docs.neptune.ai/essentials/api-reference/run>`_
+    for more info about additional run parameters.
+
+    **Details about Neptune run structure**
 
     Runs can be viewed as nested dictionary-like structures that you can define in your code.
     Thanks to this you can easily organize your metadata in a way that is most convenient for you.
@@ -150,10 +154,10 @@ class NeptuneLogger(LightningLoggerBase):
     You can organize this way any type of metadata - images, parameters, metrics, model checkpoint, CSV files, etc.
 
     See Also:
-
-        * `Neptune documentation <https://docs.neptune.ai/user-guides/logging-and-managing-runs-results/logging-runs-data#what-objects-can-you-log-to-neptune>`_
-            about various types of data that can be logged.
-        * `Example run <https://app.neptune.ai/o/common/org/new-pytorch-lightning-integration/e/NEWPL-8/all>`_
+        You can read about `what object you can log to Neptune <https://docs.neptune.ai/user-guides/
+        logging-and-managing-runs-results/logging-runs-data#what-objects-can-you-log-to-neptune>`_.
+        Also check `example run <https://app.neptune.ai/o/common/org/new-pytorch-lightning-integration/e/NEWPL-8/all>`_
+        with multiple type of metadata logged.
 
     Args:
         api_key: Optional.
@@ -175,7 +179,8 @@ class NeptuneLogger(LightningLoggerBase):
             If specified (e.g. 'ABC-42'), connect to run with `sys/id` in project_name.
             Input argument "name" will be overridden based on fetched run data.
         prefix: A string to put at the beginning of metric keys.
-        \**kwargs: Additional arguments like `tags`, `capture_stdout`, `capture_stderr` etc. used when run is created.
+        \**kwargs: Additional arguments like ``tags``, ``description``, ``capture_stdout``, ``capture_stderr`` etc.
+            used when run is created.
 
     Raises:
         ImportError:
@@ -262,10 +267,14 @@ class NeptuneLogger(LightningLoggerBase):
         r"""
         Log hyper-parameters to the run.
 
-        Params will be logged using the following scheme: "param__batch_size", "param__lr".
+        Params will be logged using the ``param__`` scheme, for example: ``param__batch_size``, ``param__lr``.
 
-        Note, that you can also log parameters by directly using the logger instance:
-        `neptune_logger.experiment['model/hyper-parameters'] = params_dict`.
+        **Note**
+
+        You can also log parameters by directly using the logger instance:
+        ``neptune_logger.experiment['model/hyper-parameters'] = params_dict``.
+
+        In this way you can keep hierarchical structure of the parameters.
 
         Args:
             params: `dict`.

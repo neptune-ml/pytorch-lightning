@@ -128,8 +128,9 @@ The :class:`~pytorch_lightning.loggers.NeptuneLogger` is available anywhere exce
 
     class MyModule(LightningModule):
         def any_lightning_module_function_or_hook(self):
-            some_img = fake_image()
-            self.logger.experiment.add_image('generated_images', some_img, 0)
+            # generic recipe
+            metadata = ...
+            self.logger.experiment['your/metadata/structure'].log(metadata)
 
 .. seealso::
     :class:`~pytorch_lightning.loggers.NeptuneLogger` docs.
