@@ -28,6 +28,7 @@ log = logging.getLogger(__name__)
 
 if _module_available("neptune"):
     from neptune import __version__
+
     _NEPTUNE_AVAILABLE = __version__.startswith('0.9.') or __version__.startswith('1.')
 else:
     _NEPTUNE_AVAILABLE = False
@@ -150,9 +151,8 @@ class NeptuneLogger(LightningLoggerBase):
 
     See Also:
 
-        * `Neptune documentation <https://docs.neptune.ai/user-guides/logging-and-managing-runs-results/
-        logging-runs-data#what-objects-can-you-log-to-neptune>`_
-        about various types of data that can be logged.
+        * `Neptune documentation <https://docs.neptune.ai/user-guides/logging-and-managing-runs-results/logging-runs-data#what-objects-can-you-log-to-neptune>`_
+            about various types of data that can be logged.
         * `Example run <https://app.neptune.ai/o/common/org/new-pytorch-lightning-integration/e/NEWPL-8/all>`_
 
     Args:
