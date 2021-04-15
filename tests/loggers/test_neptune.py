@@ -55,6 +55,7 @@ def test_neptune_leave_open_experiment_after_fit(neptune, tmpdir):
 
     def _run_training(logger):
         logger._run_instance = MagicMock()
+        logger._run_instance.__getitem__.return_value.fetch.return_value = 'offline-name'
         trainer = Trainer(
             default_root_dir=tmpdir,
             max_epochs=1,
