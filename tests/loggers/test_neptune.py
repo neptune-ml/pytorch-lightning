@@ -83,7 +83,8 @@ def _assert_legacy(callback, *args, **kwargs):
         raise AssertionError("Should throw `ValueError`")
 
 
-def test_legacy_init_kwargs():
+@patch('pytorch_lightning.loggers.neptune.neptune')
+def test_legacy_init_kwargs(neptune):
     legacy_neptune_init_kwargs = [
         'project_name',
         'offline_mode',
@@ -111,7 +112,8 @@ def test_legacy_init_kwargs():
         )
 
 
-def test_legacy_functions():
+@patch('pytorch_lightning.loggers.neptune.neptune')
+def test_legacy_functions(neptune):
     logger = NeptuneLogger(api_key='test', project='project')
 
     # test all  functions
