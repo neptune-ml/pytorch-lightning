@@ -55,7 +55,7 @@ def test_neptune_leave_open_experiment_after_fit(neptune, tmpdir):
 
     def _run_training(logger):
         logger._run_instance = MagicMock()
-        logger._run_instance.__getitem__.return_value.fetch.return_value = 'offline-name'
+        logger._run_instance.__getitem__.return_value.fetch.return_value = 'exp-name'
         trainer = Trainer(
             default_root_dir=tmpdir,
             max_epochs=1,
@@ -67,10 +67,10 @@ def test_neptune_leave_open_experiment_after_fit(neptune, tmpdir):
         assert trainer.log_dir is None
         return logger
 
-    logger_close_after_fit = _run_training(NeptuneLogger(offline_mode=True))
+    logger_close_after_fit = _run_training(NeptuneLogger(api_key='test', project='project'))
     assert logger_close_after_fit.experiment.stop.call_count == 1
 
-    logger_open_after_fit = _run_training(NeptuneLogger(offline_mode=True, close_after_fit=False))
+    logger_open_after_fit = _run_training(NeptuneLogger(api_key='test', project='project', close_after_fit=False))
     assert logger_open_after_fit.experiment.stop.call_count == 0
 
 
