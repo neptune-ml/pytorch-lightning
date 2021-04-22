@@ -16,6 +16,7 @@ Neptune Logger
 --------------
 """
 import logging
+import operator
 from argparse import Namespace
 from typing import Any, Dict, Optional, Union
 
@@ -23,8 +24,33 @@ import torch
 
 from pytorch_lightning.loggers.base import LightningLoggerBase, rank_zero_experiment
 from pytorch_lightning.utilities import _module_available, rank_zero_only
+from pytorch_lightning.utilities.imports import _compare_version
 
 log = logging.getLogger(__name__)
+
+LEGACY_NEPTUNE_INIT_KWARGS = [
+    'project_name',
+    'offline_mode',
+    'experiment_name',
+    'experiment_id',
+    'params',
+    'properties',
+    'upload_source_files',
+    'abort_callback',
+    'logger',
+    'upload_stdout',
+    'upload_stderr',
+    'send_hardware_metrics',
+    'run_monitoring_thread',
+    'handle_uncaught_exceptions',
+    'git_info',
+    'hostname',
+    'notebook_id',
+    'notebook_path',
+]
+
+_NEPTUNE_AVAILABLE = _module_available("neptune")
+_NEPTUNE_GREATER_EQUAL_0_9 = _NEPTUNE_AVAILABLE and _compare_version("neptune", operator.ge, "0.9.0")
 
 if _module_available("neptune"):
     from neptune import __version__
@@ -33,7 +59,7 @@ if _module_available("neptune"):
 else:
     _NEPTUNE_AVAILABLE = False
 
-if _NEPTUNE_AVAILABLE:
+if _NEPTUNE_AVAILABLE and _NEPTUNE_GREATER_EQUAL_0_9:
     try:
         from neptune import new as neptune
         from neptune.new.run import Run
@@ -205,6 +231,16 @@ class NeptuneLogger(LightningLoggerBase):
                 'You want to use `neptune` in version >=0.9 logger which is not installed yet,'
                 ' install it with `pip install "neptune-client>=0.9"`.'
             )
+        used_legacy_kwargs = [
+            legacy_kwarg for legacy_kwarg in neptune_run_kwargs.keys()
+            if legacy_kwarg in LEGACY_NEPTUNE_INIT_KWARGS
+        ]
+        if used_legacy_kwargs:
+            raise ValueError(
+                f"Following kwargs used by you are deprecated: {used_legacy_kwargs}."
+                f" You should use arguments accepted by either `NeptuneLogger.init` or `neptune.init`."
+            )
+
         super().__init__()
         self._project = project
         self._api_key = api_key
@@ -284,13 +320,17 @@ class NeptuneLogger(LightningLoggerBase):
 
             from pytorch_lightning.loggers import NeptuneLogger
 
-            PARAMS = {'batch_size': 64,
-                      'lr': 0.07,
-                      'decay_factor': 0.97}
+            PARAMS = {
+                'batch_size': 64,
+                'lr': 0.07,
+                'decay_factor': 0.97
+            }
 
-            neptune_logger = NeptuneLogger(api_key='ANONYMOUS',
-                                           close_after_fit=False,
-                                           project='common/new-pytorch-lightning-integration')
+            neptune_logger = NeptuneLogger(
+                api_key='ANONYMOUS',
+                close_after_fit=False,
+                project='common/new-pytorch-lightning-integration'
+            )
 
             neptune_logger.log_hyperparams(PARAMS)
         """
@@ -342,3 +382,37 @@ class NeptuneLogger(LightningLoggerBase):
         except NeptuneOfflineModeFetchException:
             return 'offline-id-1234'
         return self.run['sys/id'].fetch()
+
+    def _raise_deprecated_api_usage(self, f_name, sample_code):
+        raise ValueError(f"Function you've used  is deprecated."
+                         f" Instead of `logger.{f_name}` you can use:\n"
+                         f"\tfrom neptune.new.attributes import constants"
+                         f"\t{sample_code}")
+
+    @rank_zero_only
+    def log_metric(self, *args, **kwargs):
+        self._raise_deprecated_api_usage("log_metric", "logger.run[constants.LOG_ATTRIBUTE_SPACE]['key'].log(42)")
+
+    @rank_zero_only
+    def log_text(self, *args, **kwargs):
+        self._raise_deprecated_api_usage("log_text", "logger.run[constants.LOG_ATTRIBUTE_SPACE]['key'].log('text')")
+
+    @rank_zero_only
+    def log_image(self, *args, **kwargs):
+        self._raise_deprecated_api_usage("log_image",
+                                         "logger.run[constants.ARTIFACT_ATTRIBUTE_SPACE]['key'].log(img_file)")
+
+    @rank_zero_only
+    def log_artifact(self, *args, **kwargs):
+        self._raise_deprecated_api_usage("log_artifact",
+                                         "logger.run[constants.ARTIFACT_ATTRIBUTE_SPACE]['key'].log(file)")
+
+    @rank_zero_only
+    def set_property(self, *args, **kwargs):
+        self._raise_deprecated_api_usage("log_artifact",
+                                         "logger.run[constants.PROPERTIES_ATTRIBUTE_SPACE]['key/sub-key'].log(value)")
+
+    @rank_zero_only
+    def append_tags(self, *args, **kwargs):
+        self._raise_deprecated_api_usage("append_tags",
+                                         "logger.run[constants.SYSTEM_TAGS_ATTRIBUTE_PATH].add(tag/tags)")

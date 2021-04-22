@@ -270,6 +270,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 - Deprecated the use of `Trainer(gpus="i")` (string) for selecting the i-th GPU; from v1.5 this will set the number of GPUs instead of the index ([#6388](https://github.com/PyTorchLightning/pytorch-lightning/pull/6388))
 
+- Rename `pytorch_lightning.loggers.neptune.NeptuneLogger` to `pytorch_lightning.loggers.neptune_legacy.NeptuneLegacyLogger` ([#6867](https://github.com/PyTorchLightning/pytorch-lightning/pull/6867))
+
+
 ### Removed
 
 
