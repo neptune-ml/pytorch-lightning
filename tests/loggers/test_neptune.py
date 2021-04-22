@@ -74,13 +74,13 @@ def test_neptune_leave_open_experiment_after_fit(neptune, tmpdir):
     assert logger_open_after_fit.experiment.stop.call_count == 0
 
 
-def _assert_legacy(callable, *args, **kwargs):
+def _assert_legacy(callback, *args, **kwargs):
     try:
-        callable(*args, **kwargs)
+        callback(*args, **kwargs)
     except ValueError:
         pass
     else:
-        raise AssertionError(f"Should throw `ValueError`")
+        raise AssertionError("Should throw `ValueError`")
 
 
 def test_legacy_init_kwargs():
@@ -106,7 +106,8 @@ def test_legacy_init_kwargs():
     ]
     for legacy_kwarg in legacy_neptune_init_kwargs:
         _assert_legacy(
-            lambda: NeptuneLogger(**{legacy_kwarg: None})
+            NeptuneLogger,
+            **{legacy_kwarg: None}
         )
 
 
