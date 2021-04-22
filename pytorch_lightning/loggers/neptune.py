@@ -22,6 +22,7 @@ from typing import Any, Dict, Optional, Union
 
 import torch
 
+from pytorch_lightning import __version__
 from pytorch_lightning.loggers.base import LightningLoggerBase, rank_zero_experiment
 from pytorch_lightning.utilities import _module_available, rank_zero_only
 from pytorch_lightning.utilities.imports import _compare_version
@@ -53,9 +54,9 @@ _NEPTUNE_AVAILABLE = _module_available("neptune")
 _NEPTUNE_GREATER_EQUAL_0_9 = _NEPTUNE_AVAILABLE and _compare_version("neptune", operator.ge, "0.9.0")
 
 if _module_available("neptune"):
-    from neptune import __version__
+    from neptune import __version__ as neptune_versions
 
-    _NEPTUNE_AVAILABLE = __version__.startswith('0.9.') or __version__.startswith('1.')
+    _NEPTUNE_AVAILABLE = neptune_versions.startswith('0.9.') or neptune_versions.startswith('1.')
 else:
     _NEPTUNE_AVAILABLE = False
 
@@ -290,6 +291,7 @@ class NeptuneLogger(LightningLoggerBase):
                     name=self._name,
                     **self._neptune_run_kwargs,
                 )
+                self._run_instance['source_code/integrations/neptune-pytorch-lightning'] = __version__
             except NeptuneLegacyProjectException as e:
                 raise TypeError(f"""
                     Project {self._project} has not been imported to new structure yet.
