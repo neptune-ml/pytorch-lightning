@@ -206,6 +206,7 @@ class NeptuneLogger(LightningLoggerBase):
             If specified (e.g. 'ABC-42'), connect to run with `sys/id` in project_name.
             Input argument "name" will be overridden based on fetched run data.
         prefix: A string to put at the beginning of metric keys.
+        base_namespace: A base directory where parameters and metrics will be stored.
         \**kwargs: Additional arguments like ``tags``, ``description``, ``capture_stdout``, ``capture_stderr`` etc.
             used when run is created.
 
@@ -217,6 +218,9 @@ class NeptuneLogger(LightningLoggerBase):
     """
 
     LOGGER_JOIN_CHAR = '/'
+    PARAMETERS_KEY = 'parameters'
+    METRICS_KEY = 'metrics'
+    ARTIFACTS_KEY = 'artifacts'
 
     def __init__(
             self,
@@ -226,6 +230,7 @@ class NeptuneLogger(LightningLoggerBase):
             name: Optional[str] = None,
             run: Optional[str] = None,
             prefix: str = '',
+            base_namespace: str = None,
             **neptune_run_kwargs):
         if neptune is None:
             raise ImportError(
@@ -250,6 +255,7 @@ class NeptuneLogger(LightningLoggerBase):
         self._name = name
         self._run_to_load = run  # particular id of exp to load e.g. 'ABC-42'
         self._prefix = prefix
+        self._base_namespace = base_namespace
 
         self._run_instance = None
 
@@ -337,9 +343,12 @@ class NeptuneLogger(LightningLoggerBase):
             neptune_logger.log_hyperparams(PARAMS)
         """
         params = self._convert_params(params)
-        params = self._flatten_dict(params)
-        for key, val in params.items():
-            self.run[f'param__{key}'] = val
+
+        parameters_key = self.PARAMETERS_KEY
+        if self._base_namespace:
+            parameters_key = f'{self._base_namespace}/{parameters_key}'
+
+        self.run[parameters_key] = params
 
     @rank_zero_only
     def log_metrics(self, metrics: Dict[str, Union[torch.Tensor, float]], step: Optional[int] = None) -> None:
@@ -353,10 +362,14 @@ class NeptuneLogger(LightningLoggerBase):
         assert rank_zero_only.rank == 0, 'run tried to log from global_rank != 0'
 
         metrics = self._add_prefix(metrics)
+        metrics_key = self.METRICS_KEY
+        if self._base_namespace:
+            metrics_key = f'{self._base_namespace}/{metrics_key}'
+
         for key, val in metrics.items():
             # `step` is ignored because Neptune expects strictly increasing step values which
             # Lighting does not always guarantee.
-            self.experiment[key].log(val)
+            self.experiment[f'{metrics_key}/{key}'].log(val)
 
     @rank_zero_only
     def finalize(self, status: str) -> None:
@@ -388,33 +401,31 @@ class NeptuneLogger(LightningLoggerBase):
     def _raise_deprecated_api_usage(self, f_name, sample_code):
         raise ValueError(f"Function you've used  is deprecated."
                          f" Instead of `logger.{f_name}` you can use:\n"
-                         f"\tfrom neptune.new.attributes import constants"
                          f"\t{sample_code}")
 
     @rank_zero_only
     def log_metric(self, *args, **kwargs):
-        self._raise_deprecated_api_usage("log_metric", "logger.run[constants.LOG_ATTRIBUTE_SPACE]['key'].log(42)")
+        self._raise_deprecated_api_usage("log_metric", f"logger.run['{self.METRICS_KEY}/key'].log(42)")
 
     @rank_zero_only
     def log_text(self, *args, **kwargs):
-        self._raise_deprecated_api_usage("log_text", "logger.run[constants.LOG_ATTRIBUTE_SPACE]['key'].log('text')")
+        self._raise_deprecated_api_usage("log_text", f"logger.run['{self.METRICS_KEY}/key'].log('text')")
 
     @rank_zero_only
     def log_image(self, *args, **kwargs):
         self._raise_deprecated_api_usage("log_image",
-                                         "logger.run[constants.ARTIFACT_ATTRIBUTE_SPACE]['key'].log(img_file)")
+                                         f"logger.run['{self.METRICS_KEY}/key'].log(File('path_to_image'))")
 
     @rank_zero_only
     def log_artifact(self, *args, **kwargs):
         self._raise_deprecated_api_usage("log_artifact",
-                                         "logger.run[constants.ARTIFACT_ATTRIBUTE_SPACE]['key'].log(file)")
+                                         f"logger.run['{self.ARTIFACTS_KEY}/key'].log('path_to_file')")
 
     @rank_zero_only
     def set_property(self, *args, **kwargs):
-        self._raise_deprecated_api_usage("log_artifact",
-                                         "logger.run[constants.PROPERTIES_ATTRIBUTE_SPACE]['key/sub-key'].log(value)")
+        self._raise_deprecated_api_usage("log_artifact", f"logger.run['{self.PARAMETERS_KEY}/key'].log(value)")
 
     @rank_zero_only
     def append_tags(self, *args, **kwargs):
         self._raise_deprecated_api_usage("append_tags",
-                                         "logger.run[constants.SYSTEM_TAGS_ATTRIBUTE_PATH].add(tag/tags)")
+                                         "logger.run['sys/tags'].add(['foo', 'bar'])")

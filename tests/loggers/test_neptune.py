@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import torch
 
@@ -81,6 +81,60 @@ def _assert_legacy(callback, *args, **kwargs):
         pass
     else:
         raise AssertionError("Should throw `ValueError`")
+
+
+@patch('pytorch_lightning.loggers.neptune.neptune')
+def test_log_hyperparams(neptune):
+    params = {
+        'foo': 'bar',
+        'nested_foo': {
+            'bar': 42
+        }
+    }
+    test_variants = [
+        ({}, 'parameters'),
+        ({'base_namespace': 'custom_namespace'}, 'custom_namespace/parameters'),
+    ]
+    for base_namespace, parameters_key in test_variants:
+        # given:
+        logger = NeptuneLogger(api_key='test', project='project', **base_namespace)
+        logger._run_instance = MagicMock()
+        run_attr_mock = MagicMock()
+        logger._run_instance.__getitem__.return_value = run_attr_mock
+
+        # when: log parameters
+        logger.log_hyperparams(params)
+
+        # then
+        logger._run_instance.__setitem__.assert_any_call(parameters_key, params)
+
+
+@patch('pytorch_lightning.loggers.neptune.neptune')
+def test_log_metrics(neptune):
+    metrics = {
+        'foo': 42,
+        'bar': 555,
+    }
+    test_variants = [
+        ({}, ('metrics/foo', 'metrics/bar')),
+        ({'base_namespace': 'custom_namespace'}, ('custom_namespace/metrics/foo', 'custom_namespace/metrics/bar')),
+    ]
+
+    for base_namespace, (metrics_foo_key, metrics_bar_key) in test_variants:
+        # given:
+        logger = NeptuneLogger(api_key='test', project='project', **base_namespace)
+        logger._run_instance = MagicMock()
+        run_attr_mock = MagicMock()
+        logger._run_instance.__getitem__.return_value = run_attr_mock
+
+        # when: log metrics
+        logger.log_metrics(metrics)
+
+        # then:
+        logger._run_instance.__getitem__.assert_any_call(metrics_foo_key)
+        logger._run_instance.__getitem__.assert_any_call(metrics_bar_key)
+        run_attr_mock.log.assert_has_calls([call(42), call(555)])
+
 
 
 @patch('pytorch_lightning.loggers.neptune.neptune')
