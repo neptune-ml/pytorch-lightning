@@ -206,7 +206,7 @@ class NeptuneLogger(LightningLoggerBase):
             If specified (e.g. 'ABC-42'), connect to run with `sys/id` in project_name.
             Input argument "name" will be overridden based on fetched run data.
         prefix: A string to put at the beginning of metric keys.
-        base_namespace: A base directory where parameters and metrics will be stored.
+        base_namespace: Parent namespace under which parameters and metrics will be stored.
         \**kwargs: Additional arguments like ``tags``, ``description``, ``capture_stdout``, ``capture_stderr`` etc.
             used when run is created.
 
@@ -230,7 +230,7 @@ class NeptuneLogger(LightningLoggerBase):
             name: Optional[str] = None,
             run: Optional[str] = None,
             prefix: str = '',
-            base_namespace: str = None,
+            base_namespace: str = '',
             **neptune_run_kwargs):
         if neptune is None:
             raise ImportError(
@@ -243,8 +243,11 @@ class NeptuneLogger(LightningLoggerBase):
         ]
         if used_legacy_kwargs:
             raise ValueError(
-                f"Following kwargs used by you are deprecated: {used_legacy_kwargs}."
-                f" You should use arguments accepted by either `NeptuneLogger.init` or `neptune.init`."
+                f"Following kwargs used by you are deprecated: {used_legacy_kwargs}.\n"
+                "If you are looking for the Neptune logger using legacy Python API it has been renamed to"
+                " NeptuneLegacyLogger. The NeptuneLogger was re-written to use the neptune.new Python API"
+                " (learn more: https://neptune.ai/blog/neptune-new).\n"
+                "You should use arguments accepted by either NeptuneLogger.init or neptune.init"
             )
 
         super().__init__()
@@ -399,8 +402,11 @@ class NeptuneLogger(LightningLoggerBase):
         return self.run['sys/id'].fetch()
 
     def _raise_deprecated_api_usage(self, f_name, sample_code):
-        raise ValueError(f"Function you've used  is deprecated."
-                         f" Instead of `logger.{f_name}` you can use:\n"
+        raise ValueError(f"The function you've used is deprecated.\n"
+                         f"If you are looking for the Neptune logger using legacy Python API it has been renamed to"
+                         f" NeptuneLegacyLogger. The NeptuneLogger was re-written to use the neptune.new Python API"
+                         f" (learn more: https://neptune.ai/blog/neptune-new).\n"
+                         f"Instead of `logger.{f_name}` you can use:\n"
                          f"\t{sample_code}")
 
     @rank_zero_only
