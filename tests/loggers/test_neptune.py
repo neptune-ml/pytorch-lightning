@@ -136,7 +136,6 @@ def test_log_metrics(neptune):
         run_attr_mock.log.assert_has_calls([call(42), call(555)])
 
 
-
 @patch('pytorch_lightning.loggers.neptune.neptune')
 def test_legacy_init_kwargs(neptune):
     legacy_neptune_init_kwargs = [
